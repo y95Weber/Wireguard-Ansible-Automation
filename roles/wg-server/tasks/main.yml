@@ -1,0 +1,54 @@
+# main.yml enthält die Hauptaufgaben für die Einrichtung des WireGuard Servers
+
+---
+- name: WireGuard installieren
+  apt:
+    name: wireguard
+    state: present
+    update_cache: yes
+
+- name: Prüfen ob Server-Private-Key existiert
+  stat:
+    path: "{{ wg_dir }}/server_private.key"
+  register: server_key
+
+- name: Server-Keypair generieren
+  shell: |
+    wg genkey | tee {{ wg_dir }}/server_private.key | wg pubkey > {{ wg_dir }}/server_public.key
+    chmod 600 {{ wg_dir }}/server_private.key
+  when: not server_key.stat.exists
+
+- name: Server-Private-Key auslesen
+  slurp:
+    src: "{{ wg_dir }}/server_private.key"
+  register: server_priv_raw
+
+- name: Server-Public-Key auslesen
+  slurp:
+    src: "{{ wg_dir }}/server_public.key"
+  register: server_pub_raw
+
+- name: Fakten setzen (Keys als Variablen verfügbar machen)
+  set_fact:
+    wg_server_private_key: "{{ server_priv_raw.content | b64decode | trim }}"
+    wg_server_public_key: "{{ server_pub_raw.content | b64decode | trim }}"
+
+- name: wg0 Server-Config deployen
+  template:
+    src: wg0-server.conf.j2
+    dest: "{{ wg_dir }}/wg0.conf"
+    mode: '0600'
+
+- name: IP-Forwarding aktivieren
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: WireGuard Interface starten und aktivieren
+  systemd:
+    name: wg-quick@wg0
+    enabled: yes
+    state: started

@@ -1,0 +1,8 @@
+[Interface]
+Address = {{ wg_server_vpn_ip }}/24
+ListenPort = {{ wg_server_port }}
+PrivateKey = {{ wg_server_private_key }}
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ ansible_interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ ansible_interface }} -j MASQUERADE
+
+# Peers werden später hier ergänzt (per wg-client Rolle / weiterer Task)

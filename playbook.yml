@@ -1,0 +1,11 @@
+---
+- name: WireGuard Server auf Admin-VM einrichten
+  hosts: wg_server
+  become: yes
+  vars_files:
+    - vars.yml
+  roles:
+    - wg-server
+
+
+## playbook.yml ist die Hauptdatei, die die Rollen und Aufgaben für die Einrichtung des WireGuard Servers definiert

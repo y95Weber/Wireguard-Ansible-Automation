@@ -1,0 +1,9 @@
+[Interface]
+Address = {{ wg_vpn_ip }}/24
+PrivateKey = {{ wg_client_private_key }}
+
+[Peer]
+PublicKey = {{ hostvars['admin-vm']['wg_server_public_key'] }}
+Endpoint = {{ wg_server_ip }}:{{ wg_server_port }}
+AllowedIPs = {{ wg_subnet }}
+PersistentKeepalive = 25

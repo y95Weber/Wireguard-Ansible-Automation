@@ -1,4 +1,5 @@
 ---
+# 1. WireGuard Server auf der Admin-VM einrichten
 - name: WireGuard Server auf Admin-VM einrichten
   hosts: wg_server
   become: yes
@@ -7,5 +8,37 @@
   roles:
     - wg-server
 
+# 2. WireGuard Clients einrichten (brauchen Server-Public-Key aus Schritt 1)
+- name: WireGuard Clients einrichten
+  hosts: wg_clients
+  become: yes
+  vars_files:
+    - vars.yml
+  roles:
+    - wg-client
 
+# 3. Server-Config mit allen Client-Peers aktualisieren
+- name: Server-Peers eintragen
+  hosts: wg_server
+  become: yes
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Peer-Block für jeden Client anhängen
+      blockinfile:
+        path: "{{ wg_dir }}/wg0.conf"
+        marker: "# {mark} PEER {{ item }}"
+        block: |
+          [Peer]
+          PublicKey = {{ hostvars[item]['wg_client_public_key'] }}
+          AllowedIPs = {{ hostvars[item]['wg_vpn_ip'] }}/32
+      loop: "{{ groups['wg_clients'] }}"
+      notify: WireGuard neu laden
+
+  handlers:
+    - name: WireGuard neu laden
+      systemd:
+        name: wg-quick@wg0
+        state: restarted
+        
 ## playbook.yml ist die Hauptdatei, die die Rollen und Aufgaben für die Einrichtung des WireGuard Servers definiert

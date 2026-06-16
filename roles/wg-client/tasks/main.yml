@@ -1,0 +1,51 @@
+#   main.yml enthält die Hauptaufgaben für die Einrichtung der Clients
+---
+- name: WireGuard installieren
+  apt:
+    name: wireguard
+    state: present
+    update_cache: yes
+
+- name: VPNUser anlegen
+  user:
+    name: "{{ vpn_user }}"
+    shell: /bin/bash
+    create_home: yes
+
+- name: Prüfen ob Client-Private-Key existiert
+  stat:
+    path: "{{ wg_dir }}/client_private.key"
+  register: client_key
+
+- name: Client-Keypair generieren
+  shell: |
+    wg genkey | tee {{ wg_dir }}/client_private.key | wg pubkey > {{ wg_dir }}/client_public.key
+    chmod 600 {{ wg_dir }}/client_private.key
+  when: not client_key.stat.exists
+
+- name: Client-Private-Key auslesen
+  slurp:
+    src: "{{ wg_dir }}/client_private.key"
+  register: client_priv_raw
+
+- name: Client-Public-Key auslesen
+  slurp:
+    src: "{{ wg_dir }}/client_public.key"
+  register: client_pub_raw
+
+- name: Fakten setzen
+  set_fact:
+    wg_client_private_key: "{{ client_priv_raw.content | b64decode | trim }}"
+    wg_client_public_key: "{{ client_pub_raw.content | b64decode | trim }}"
+
+- name: Client wg0-Config deployen
+  template:
+    src: wg0-client.conf.j2
+    dest: "{{ wg_dir }}/wg0.conf"
+    mode: '0600'
+
+- name: WireGuard Client-Interface starten und aktivieren
+  systemd:
+    name: wg-quick@wg0
+    enabled: yes
+    state: started

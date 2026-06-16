@@ -34,7 +34,7 @@ erweiterbar: neuer Host im Inventory → neuer Peer-Block, ohne Codeänderung.
 **Warum `hostvars`:** Ansible speichert während eines Playbook-Laufs Fakten
 zu jedem Host. So kann der Server-Play auf den Public Key zugreifen, den ein
 Client-Host in einem früheren Play gesetzt hat — ohne Datei-Transfer oder
-manuelles Copy-Paste.
+Client-Host in einem früheren Play gesetzt hat — ohne Datei-Transfer odermanuelles Copy-Paste.
 
 ## Modularität
 

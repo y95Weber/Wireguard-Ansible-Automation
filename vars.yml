@@ -1,7 +1,7 @@
 # vars.yml dient als zentrale Konfiguration, hier wird alles angepasst
 
 # WireGuard Server (Admin-VM)
-wg_server_ip: "192.168.56.10"      # Admin-VM IP im normalen Netzwerk (Statische IP) 
+wg_server_ip: "192.168.56.10"      # Server VM IP angeben
 wg_server_port: 51820
 wg_subnet: "10.8.0.0/24"
 wg_server_vpn_ip: "10.8.0.1"

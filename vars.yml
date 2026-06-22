@@ -1,13 +1,13 @@
 # vars.yml dient als zentrale Konfiguration, hier wird alles angepasst
 
 # WireGuard Server (Admin-VM)
-wg_server_ip: "192.168.114.50"      # Admin-VM IP im normalen Netzwerk (Statische IP) 
+wg_server_ip: "192.168.56.10"      # Admin-VM IP im normalen Netzwerk (Statische IP) 
 wg_server_port: 51820
 wg_subnet: "10.8.0.0/24"
 wg_server_vpn_ip: "10.8.0.1"
 
 # Netzwerk-Interface auf den VMs (für SSH/Ansible)
-ansible_interface: "ens33"
+ansible_interface: "enp0s8"
 
 # VPN-User Konfiguration
 vpn_user: "VPNUser"

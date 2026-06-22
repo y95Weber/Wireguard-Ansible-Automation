@@ -1,55 +1,346 @@
-# Wireguard-Ansible-Automation
-Das ist das Repo für das 2.te Projekt im Fach Netzwerkbetriebssysteme des Dozenten Oliver Bücher. Manuel Sager und Yves Weber sind die Gründer und Betreiber dieses Repos
-
-
-## Wichtiges
-1. Beim ausführen muss auf der Admin-VM iptabels installiert sein! 
-2. ssh-copy-id xy-user@192.168.114.X  Muss nach der hinzufügung im inventory noch je User ausgeführt werden! 
-
 # WireGuard Ansible Automation
-Automatisiertes Deployment eines WireGuard-VPN-Setups per Ansible. Ein Playbook
-richtet den Server (Admin-VM) ein, deployt VPN-Clients auf beliebig vielen
-Ziel-VMs und verknüpft beide Seiten automatisch über Public-Key-Austausch.
-Bei erneutem Durchlauf werden bestehende Configs inoriert.
+  
+> Autoren: Manuel Sager & Yves Weber  
+> Fach: Netzwerkbetriebssysteme – Dozent Oliver Bücher
+ 
+---
+ 
+## Was macht diese Ansible Automation?
+ 
+Dieses Projekt automatisiert den vollständigen Aufbau eines **WireGuard VPN-Tunnels** zwischen einer Server VM und einer oder mehreren Client VMs. Das Ansible-Playbook wird auf der Server VM ausgeführt und konfiguriert alle Maschinen vollautomatisch.
+ 
+Das Playbook läuft in **3 Phasen**:
+ 
+**Phase 1 – WireGuard Server einrichten**
+- WireGuard installieren
+- Server-Keypair generieren (`server_private.key` / `server_public.key`)
+- IP-Forwarding via `sysctl` aktivieren
+- Server-Config (`wg0.conf`) über Jinja2-Template deployen
+- WireGuard-Dienst starten und aktivieren
 
-## Funktionsweise
-**1. Server-Rolle (`wg-server`)**
-Installiert WireGuard, generiert ein Keypair (falls noch keins existiert),
-aktiviert IP-Forwarding und startet das Interface `wg0`. Läuft auf der
-Admin-VM, lokal via `ansible_connection=local`.
+**Phase 2 – WireGuard Client einrichten**
+- WireGuard auf der Client VM installieren
+- VPN-User (`VPNUser`) anlegen
+- SSH Public Key des Servers für den VPNUser hinterlegen (passwortloser Login)
+- Client-Keypair generieren
+- Client-Config deployen
+- WireGuard-Dienst starten und aktivieren
 
-**2. Client-Rolle (`wg-client`)**
-Installiert WireGuard, legt den User `VPNUser` an, generiert ein eigenes
-Keypair und baut daraus die Client-Config — inklusive Endpoint und Public Key
-des Servers (per `hostvars` aus Schritt 1 ausgelesen).
+**Phase 3 – Peers eintragen**
+- Client als Peer in die Server-Config eintragen (`blockinfile`, idempotent)
+- WireGuard auf dem Server neu laden
+---
+ 
+## Voraussetzungen
+ 
+- VirtualBox mit zwei Debian VMs
+- Beide VMs haben zwei Netzwerkkarten:
+  - **Adapter 1**: NAT enp0s3 (für Internet / apt)
+  - **Adapter 2**: Host-Only Ethernet Adapter enp0s8 (für VM-zu-VM Kommunikation)
+- Ansible ist auf der Server VM installiert
+---
+ ## Step-by-Step Anleitung
+ 
+### Schritt 1 – VirtualBox Host-Only Netzwerk einrichten
+ 
+In VirtualBox: **Datei → Host-only Network Manager**
+ 
+- Netzwerk → Erzeugen
+- IPv4-Adresse: `192.168.56.1`
+- Subnetzmaske: `255.255.255.0`
+- **DHCP-Server deaktivieren** (wir nutzen statische IPs)
+---
 
-**3. Peer Verknüpfung (im `playbook.yml`, Play 3)**
-Nach dem Client-Deployment kennt der Server die Clients noch nicht. Ein
-separater Play läuft erneut auf der Admin-VM und trägt für jeden Host in der
-Inventory-Gruppe `wg_clients` einen `[Peer]`-Block in die Server-Config ein —
-per `blockinfile` mit eindeutigem `marker` pro Host. Das verhindert Duplikate
-bei mehrfachem Playbook-Lauf (Idempotenz) und macht das Setup beliebig
-erweiterbar: neuer Host im Inventory → neuer Peer-Block, ohne Codeänderung.
+### Schritt 2 – Debian VMs erstellen
+ 
+Für **beide VMs** (Server und Client) dieselben Schritte:
+ 
+1. Neue VM → Typ: Linux, Debian 64-bit
+2. RAM: mind. 1024 MB, Disk: 20 GB (dynamisch)
+3. Debian ISO einlegen und installieren
+4. Während der Installation: **kein Desktop** (nur Standard-System-Tools auswählen)
+5. Root-Passwort setzen und einen normalen Benutzer anlegen (z.B. `TestUser`)
+**Netzwerkadapter pro VM:**
+ 
+| Adapter | Typ | Interface |
+|---|---|---|
+| Adapter 1 | NAT | enp0s3 |
+| Adapter 2 | Host-Only    | enp0s8 |
+ 
+---
 
-**Warum `hostvars`:** Ansible speichert während eines Playbook-Laufs Fakten
-zu jedem Host. So kann der Server-Play auf den Public Key zugreifen, den ein
-Client-Host in einem früheren Play gesetzt hat — ohne Datei-Transfer oder
-Client-Host in einem früheren Play gesetzt hat — ohne Datei-Transfer odermanuelles Copy-Paste.
-
-## Modularität
-
-Alle Parameter (IP-Bereiche, Server-Endpoint, Usernamen) liegen in `vars.yml`.
-Hosts, IPs und SSH-User sind pro VM frei im `inventory.ini` definierbar
-(`ansible_host`, `ansible_user`, `wg_vpn_ip`) — eine neue VM  erfordert nur einen neuen Inventory-Eintrag, kein Code-Änderung.
-
-## Voraussetzungen pro Ziel-VM
-
-- Statische IP im selben Netzwerk wie die Admin-VM
-- SSH erreichbar, User mit sudo-Rechten
-- SSH-Key der Admin-VM hinterlegt (`ssh-copy-id`)
-- Python3 installiert
-
-## Ausführen
+### Schritt 3 – sudo einrichten (beide VMs)
+ 
+Debian installiert `sudo` nicht automatisch. Als **root** einloggen:
+ 
+```bash
+su -
+apt install -y sudo
+usermod -aG sudo TestUser # Hier bei TestUser den Namen des Users eingeben
+exit
 ```
+ 
+Danach ausloggen und neu einloggen, damit die Gruppenänderung wirksam wird:
+ 
+```bash
+exit
+# neu einloggen als z.B. TestUser
+sudo whoami   # muss "root" ausgeben
+```
+ 
+---
+
+### Schritt 4 – Interface-Namen prüfen (beide VMs)
+ 
+```bash
+ip a
+```
+ 
+Die Interface-Namen auf Debian können abweichen. Typische Namen:
+ 
+| Interface | Zweck |
+|---|---|
+| `enp0s3` | NAT (Internet) |
+| `enp0s8` | Host-Only (VM-Kommunikation) |
+ 
+> Falls deine Interfaces anders heissen (z.B. `eth0`, `eth1`), die Namen notieren — du brauchst sie in Schritt 5 und 7.
+ 
+---
+
+### Schritt 5 – Statische IPs setzen (Debian: `/etc/network/interfaces`)
+ 
+**Server VM:**
+ 
+```bash
+sudo nano /etc/network/interfaces
+```
+ 
+```
+# Loopback
+auto lo
+iface lo inet loopback
+ 
+# NAT – Internet
+auto enp0s3
+iface enp0s3 inet dhcp
+ 
+# Host-Only – statische IP
+auto enp0s8
+iface enp0s8 inet static
+    address 192.168.56.10
+    netmask 255.255.255.0
+```
+ 
+Netzwerk neu starten:
+ 
+```bash
+sudo systemctl restart networking
+ip a   # enp0s8 sollte 192.168.56.10 zeigen
+```
+ 
+**Client VM:**
+
+```bash
+sudo nano /etc/network/interfaces
+```
+ 
+```
+# Loopback
+auto lo
+iface lo inet loopback
+ 
+# NAT – Internet
+auto enp0s3
+iface enp0s3 inet dhcp
+ 
+# Host-Only – statische IP
+auto enp0s8
+iface enp0s8 inet static
+    address 192.168.56.20
+    netmask 255.255.255.0
+```
+ 
+```bash
+sudo systemctl restart networking
+ip a   # enp0s8 sollte 192.168.56.20 zeigen
+```
+ 
+---
+
+### Schritt 6 – Verbindung zwischen VMs testen
+ 
+Von der **Server VM**:
+ 
+```bash
+ping 192.168.56.20
+```
+ 
+Von der **Client VM**:
+ 
+```bash
+ping 192.168.56.10
+```
+ 
+Beide Pings müssen durchkommen bevor du weitermachst.
+ 
+---
+
+### Schritt 7 – Ansible, Git und SSH auf der Server VM installieren
+ 
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y ansible git openssh-client
+ansible --version
+```
+ 
+---
+
+### Schritt 8 – SSH-Server auf der Client VM installieren
+ 
+```bash
+sudo apt install -y openssh-server
+sudo systemctl enable ssh
+sudo systemctl start ssh
+sudo systemctl status ssh   # muss "active (running)" zeigen
+```
+ 
+---
+
+### Schritt 9 – SSH-Key generieren und auf Client VM kopieren
+ 
+Auf der **Server VM**:
+ 
+```bash
+ssh-keygen -t ed25519 -C "wireguard-ansible"
+# Enter drücken (kein Passphrase nötig)
+```
+ 
+SSH-Key auf die Client VM übertragen:
+ 
+```bash
+ssh-copy-id UserNameClient@192.168.56.20
+# Passwort der Client VM eingeben
+```
+ 
+Verbindung testen:
+ 
+```bash
+ssh yeves95@192.168.56.20
+# Kein Passwort = Erfolg
+exit
+```
+ 
+---
+
+### Schritt 10 – Repo klonen
+ 
+Auf der **Server VM**:
+ 
+```bash
+git clone https://github.com/y95Weber/Wireguard-Ansible-Automation.git
+cd Wireguard-Ansible-Automation
+```
+ 
+---
+
+### Schritt 11 – `vars.yml` anpassen
+ 
+```bash
+nano vars.yml
+```
+ 
+```yaml
+# vars.yml dient als zentrale Konfiguration, hier wird alles angepasst
+ 
+# WireGuard Server (Admin-VM)
+wg_server_ip: "192.168.56.10"      # IP der Server VM im Host-Only Netz
+wg_server_port: 51820
+wg_subnet: "10.8.0.0/24"
+wg_server_vpn_ip: "10.8.0.1"
+ 
+# Netzwerk-Interface auf den VMs (für SSH/Ansible)
+ansible_interface: "enp0s8"        # Interface des Host-Only Adapters → mit "ip a" prüfen
+ 
+# VPN-User Konfiguration
+vpn_user: "VPNUser"
+ 
+# Pfade
+wg_dir: "/etc/wireguard"
+```
+ 
+> **Wichtig:** `ansible_interface` muss dem Interface entsprechen, das die IP `192.168.56.10` hat. Mit `ip a` auf der Server VM prüfen.
+ 
+---
+
+### Schritt 12 – `inventory.ini` anpassen
+ 
+```bash
+nano inventory.ini
+```
+ 
+```ini
+# inventory.ini definiert die Hosts und Gruppen für Ansible
+ 
+[wg_server]
+admin-vm ansible_connection=local ansible_host=192.168.56.10
+ 
+[wg_clients]
+vm1   ansible_host=192.168.56.20 ansible_user=HierUserName wg_vpn_ip=10.8.0.2
+ 
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+```
+ 
+> **Wichtig:** `ansible_user` muss dem tatsächlichen Benutzernamen auf der Client VM entsprechen.  
+> Für jede weitere Client VM eine neue Zeile hinzufügen und `wg_vpn_ip` erhöhen (z.B. `10.8.0.3`).
+ 
+---
+
+### Schritt 13 – Syntax-Check
+ 
+```bash
+ansible-playbook -i inventory.ini playbook.yml --syntax-check
+```
+ 
+Erwartete Ausgabe:
+```
+playbook: playbook.yml
+```
+ 
+---
+
+### Schritt 14 – Playbook ausführen
+ 
+```bash
 ansible-playbook -i inventory.ini playbook.yml --ask-become-pass
 ```
+ 
+sudo-Passwort der Server VM eingeben. Das Playbook konfiguriert nun beide VMs automatisch.
+ 
+Erwartete Ausgabe im PLAY RECAP:
+```
+admin-vm   : ok=12  changed=5  unreachable=0  failed=0
+vm1        : ok=9   changed=3  unreachable=0  failed=0
+```
+ 
+---
+
+### Schritt 15 – Verbindung testen
+ 
+**WireGuard Status prüfen:**
+```bash
+sudo wg show
+```
+ 
+**Ping über VPN-Tunnel:**
+```bash
+ping 10.8.0.2
+```
+ 
+**SSH als VPNUser über den Tunnel**
+```bash
+# Hier muss auf UserVM zeurst mit sudo passwd VPNUser ein Passwort gesetzt werden
+ssh VPNUser@10.8.0.2
+```
+ 
+---

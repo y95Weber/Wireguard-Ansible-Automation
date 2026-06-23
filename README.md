@@ -37,7 +37,9 @@ Das Playbook läuft in **3 Phasen**:
 - Beide VMs haben zwei Netzwerkkarten:
   - **Adapter 1**: NAT enp0s3 (für Internet / apt)
   - **Adapter 2**: Host-Only Ethernet Adapter enp0s8 (für VM-zu-VM Kommunikation)
+  - **Wichtig**: Diese Anleitung ist zum Testen auf einem Client vorgesehen. Falls in einem Netzwerk wie z.B. Teko Netz getestet werden soll, benötigt man nur eine Netzwerkkarte als Netzwerkbrücke und muss vor der konfiguration der .yaml Dateien mit dem Befehl "ip a" die IP Adresse rausschreiben um diese dann zu verwenden. Zudem kann man **Punkt 5** der Step by Step Anleitung überspringen.
 - Ansible ist auf der Server VM installiert
+
 ---
  ## Step-by-Step Anleitung
  
@@ -225,7 +227,7 @@ ssh-copy-id UserNameClient@192.168.56.20
 Verbindung testen:
  
 ```bash
-ssh yeves95@192.168.56.20
+ssh UserNameClient@192.168.56.20
 # Kein Passwort = Erfolg
 exit
 ```
@@ -253,13 +255,13 @@ nano vars.yml
 # vars.yml dient als zentrale Konfiguration, hier wird alles angepasst
  
 # WireGuard Server (Admin-VM)
-wg_server_ip: "192.168.56.10"      # IP der Server VM im Host-Only Netz
+wg_server_ip: "192.168.56.10"      # IP der Server VM im Host-Only Netz (in diesem Beispiel enp0s8. Falls nur Netzwerkbrücke werwendet wird ist es enp0s3)
 wg_server_port: 51820
 wg_subnet: "10.8.0.0/24"
 wg_server_vpn_ip: "10.8.0.1"
  
 # Netzwerk-Interface auf den VMs (für SSH/Ansible)
-ansible_interface: "enp0s8"        # Interface des Host-Only Adapters → mit "ip a" prüfen
+ansible_interface: "enp0s8"        # Interface des Host-Only Adapters → mit "ip a" prüfen (in diesem Beispiel enp0s8. Falls nur Netzwerkbrücke werwendet wird ist es enp0s3)
  
 # VPN-User Konfiguration
 vpn_user: "VPNUser"

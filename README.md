@@ -40,6 +40,7 @@ Das Playbook läuft in **3 Phasen**:
   - **Adapter 2**: Host-Only Ethernet Adapter enp0s8 (für VM-zu-VM Kommunikation)
   - **Wichtig**: Diese Anleitung ist zum Testen auf einem Client vorgesehen. Falls in einem Netzwerk wie z.B. Teko Netz getestet werden soll, benötigt man nur eine Netzwerkkarte als Netzwerkbrücke und muss vor der konfiguration der .yaml Dateien mit dem Befehl "ip a" die IP Adresse rausschreiben um diese dann zu verwenden. Zudem kann man **Punkt 5** der Step by Step Anleitung überspringen.
 - Ansible ist auf der Server VM installiert
+- Git ist auf der Server VM installiert
 - SSH Zugriff vom Server auf den Client mit Public Key.
 
 ---
@@ -330,6 +331,15 @@ vm1        : ok=9   changed=3  unreachable=0  failed=0
 ---
 
 ### Schritt 15 – Verbindung testen
+
+**VPNUser PW setzen** 
+```bash
+# Auf der Client VM 
+
+sudo passwd VPNUser
+> neues Passwort eingeben und bestätigen.
+su VPNUser
+```
  
 **WireGuard Status prüfen:**
 ```bash
@@ -343,7 +353,6 @@ ping 10.8.0.2
  
 **SSH als VPNUser über den Tunnel**
 ```bash
-# Hier muss auf UserVM zeurst mit sudo passwd VPNUser ein Passwort gesetzt werden
 ssh VPNUser@10.8.0.2
 ```
  

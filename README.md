@@ -38,6 +38,7 @@ Das Playbook läuft in **3 Phasen**:
   - **Adapter 2**: Host-Only Ethernet Adapter enp0s8 (für VM-zu-VM Kommunikation)
   - **Wichtig**: Diese Anleitung ist zum Testen auf einem Client vorgesehen. Falls in einem Netzwerk wie z.B. Teko Netz getestet werden soll, benötigt man nur eine Netzwerkkarte als Netzwerkbrücke und muss vor der konfiguration der .yaml Dateien mit dem Befehl "ip a" die IP Adresse rausschreiben um diese dann zu verwenden. Zudem kann man **Punkt 5** der Step by Step Anleitung überspringen.
 - Ansible ist auf der Server VM installiert
+- SSH Zugriff vom Server auf den Client mit Public Key.
 
 ---
  ## Step-by-Step Anleitung

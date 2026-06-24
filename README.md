@@ -8,6 +8,9 @@
 ## Was macht diese Ansible Automation?
  
 Dieses Projekt automatisiert den vollständigen Aufbau eines **WireGuard VPN-Tunnels** zwischen einer Server VM und einer oder mehreren Client VMs. Das Ansible-Playbook wird auf der Server VM ausgeführt und konfiguriert alle Maschinen vollautomatisch.
+
+![Darstellung](https://https://github.com/y95Weber/Wireguard-Ansible-Automation/tree/main/Images/Darstellung.png)
+
  
 Das Playbook läuft in **3 Phasen**:
  

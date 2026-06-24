@@ -21,7 +21,6 @@ Das Playbook läuft in **3 Phasen**:
 **Phase 2 – WireGuard Client einrichten**
 - WireGuard auf der Client VM installieren
 - VPN-User (`VPNUser`) anlegen
-- SSH Public Key des Servers für den VPNUser hinterlegen (passwortloser Login)
 - Client-Keypair generieren
 - Client-Config deployen
 - WireGuard-Dienst starten und aktivieren

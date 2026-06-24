@@ -7,6 +7,8 @@
  
 ## Was macht diese Ansible Automation?
  
+Die folgende Erklärung ist für einen ersten Test auf einem Client Step-by Step ausgelegt. Erfahrene Benutzer müssen, wenn bspw. im Bridgemodus getstet wird oder bereits existierende VM's verwendet werden, nicht unbedingt den Schritten der Reihe nach folgen. 
+
 Dieses Projekt automatisiert den vollständigen Aufbau eines **WireGuard VPN-Tunnels** zwischen einer Server VM und einer oder mehreren Client VMs. Das Ansible-Playbook wird auf der Server VM ausgeführt und konfiguriert alle Maschinen vollautomatisch.
 
 ![Darstellung.png](Images/Darstellung.png)
@@ -357,3 +359,8 @@ ssh VPNUser@10.8.0.2
 ```
  
 ---
+
+## Weitereintwicklungsmöglichkeiten 
+
+- Das Playbook so erweitern, dass wenn bereits ein wg0 interface existiert, dieses heruntergefahren, gelöscht wird und anschliessend das neue hochgefahren. 
+- 

@@ -1,7 +1,7 @@
 # WireGuard Ansible Automation
   
 > Autoren: Manuel Sager & Yves Weber  
-> Fach: Netzwerkbetriebssysteme – Dozent Oliver Bücher
+> Fach: Netzwerkbetriebssysteme – Dozent Oliver Büchel
  
 ---
  

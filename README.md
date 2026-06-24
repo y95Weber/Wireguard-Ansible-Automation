@@ -11,7 +11,7 @@ Dieses Projekt automatisiert den vollständigen Aufbau eines **WireGuard VPN-Tun
  
 Das Playbook läuft in **3 Phasen**:
  
-**Phase 1 – WireGuard Server einrichten**
+**Phase 1 – WireGuard 8Server einrichten**
 - WireGuard installieren
 - Server-Keypair generieren (`server_private.key` / `server_public.key`)
 - IP-Forwarding via `sysctl` aktivieren
